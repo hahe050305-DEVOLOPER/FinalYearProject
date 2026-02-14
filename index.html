@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AuraCheck: Final V10</title>
+    <title>AuraCheck: Final V10.1</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.js" crossorigin="anonymous"></script>
     <style>
         body { margin: 0; font-family: -apple-system, sans-serif; transition: background 0.6s ease; overflow: hidden; background: #f1f2f6; }
@@ -15,33 +15,27 @@
         #advice { font-size: 0.95rem; font-weight: 700; padding: 0 20px; min-height: 60px; color: #333; line-height: 1.3; }
         .status-bar { font-size: 0.6rem; color: #888; font-weight: bold; letter-spacing: 1px; }
         #btn-capture { width: 85vw; max-width: 280px; padding: 18px; border-radius: 50px; border: none; background: #111; color: white; font-weight: bold; cursor: pointer; }
-        
-        /* TUTORIAL MODAL */
         #modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; padding: 20px; align-items: center; justify-content: center; color: white; }
         .modal-content { background: #fff; color: #111; padding: 25px; border-radius: 30px; max-width: 400px; text-align: left; position: relative; max-height: 85vh; overflow-y: auto; }
-        .modal-content h2 { margin-top: 0; font-size: 1.2rem; }
-        .modal-content li { margin-bottom: 12px; font-size: 0.85rem; }
         .close-btn { background: #ff7675; color: white; padding: 10px 20px; border-radius: 20px; border: none; font-weight: bold; width: 100%; margin-top: 15px; cursor: pointer; }
-        
         .loading-overlay { position: fixed; inset: 0; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
     </style>
 </head>
 <body>
     <div id="loading" class="loading-overlay">
         <div style="font-size: 2.5rem; margin-bottom: 10px;">🛡️</div>
-        <p style="font-weight: bold; color: #555;">SYNCING FINAL BIOMETRICS...</p>
+        <p style="font-weight: bold; color: #555;">STABILIZING BIOMETRICS...</p>
     </div>
 
     <div id="modal-overlay">
         <div class="modal-content">
-            <h2>Aura Micro-Triggers</h2>
-            <ul style="padding-left: 20px;">
-                <li><strong>Thinking:</strong> Turn head left/right or look down.</li>
-                <li><strong>Frustrated:</strong> Narrow eyes + lip press (Death Stare) or tensed brows.</li>
-                <li><strong>Sadness:</strong> Lowered eyebrows + eyeball drop (Hold for 2.5s).</li>
+            <h2 style="margin-top:0">Aura Triggers</h2>
+            <ul style="padding-left: 20px; font-size: 0.85rem;">
+                <li><strong>Thinking:</strong> Turn head left/right or look away.</li>
+                <li><strong>Frustrated:</strong> Actively tense/lower your eyebrows (1.5s).</li>
+                <li><strong>Sadness:</strong> Lowered brows + eyeballs looking down (2.5s).</li>
                 <li><strong>Sadness (Pose):</strong> Place hand on chin or cheek.</li>
-                <li><strong>Delighted:</strong> Natural smile.</li>
-                <li><strong>Surprised:</strong> Eyes wide + jaw dropped.</li>
+                <li><strong>Delighted:</strong> Smile naturally.</li>
             </ul>
             <button class="close-btn" onclick="toggleModal()">GOT IT</button>
         </div>
@@ -54,8 +48,8 @@
             <video id="webcam" autoplay playsinline muted></video>
         </div>
         <div>
-            <div id="advice">Detecting subtle micro-shifts...</div>
-            <div id="status" class="status-bar">IRONCLAD v10.FINAL</div>
+            <div id="advice">Detecting biometric shifts...</div>
+            <div id="status" class="status-bar">PRECISION v10.1</div>
         </div>
         <button id="btn-capture">📸 SAVE AURA REPORT</button>
         <canvas id="output_canvas" style="display:none"></canvas>
@@ -67,7 +61,7 @@
     const themes = {
         "Neutral": { bg: "#f1f2f6", color: "#2f3542", advice: "Aura Stable. System balanced." },
         "Thinking": { bg: "#ffeaa7", color: "#d35400", advice: "Cognitive focus: Deep data processing." },
-        "Frustrated": { bg: "#ff7675", color: "#c0392b", advice: "Micro-Tension: Constant stare/tension detected." },
+        "Frustrated": { bg: "#ff7675", color: "#c0392b", advice: "Tension detected: Active brow drop." },
         "Sad": { bg: "#74b9ff", color: "#0984e3", advice: "Heavy Aura: Defeated pose or despair detected." },
         "Surprised": { bg: "#fab1a0", color: "#e67e22", advice: "Aura Spike! Sudden event detected." },
         "Delighted": { bg: "#55efc4", color: "#00b894", advice: "Peak Flow! Your aura is glowing. 🌟" },
@@ -102,9 +96,9 @@
 
     async function predictWebcam() {
         if(isPaused) { window.requestAnimationFrame(predictWebcam); return; }
-        const now = Date.now();
         const result = faceLandmarker.detectForVideo(video, performance.now());
-        
+        const now = Date.now();
+
         if (result.faceBlendshapes && result.faceBlendshapes.length > 0) {
             const shapes = {};
             result.faceBlendshapes[0].categories.forEach(c => shapes[c.categoryName] = c.score);
@@ -123,18 +117,17 @@
                 } else {
                     timers.Thinking = 0;
 
-                    // FRUSTRATION (Low tension + Stare)
-                    const lightBrowTension = shapes.browDownLeft > 0.18 || shapes.browDownRight > 0.18;
-                    const deathStare = shapes.eyeSquintLeft > 0.15 && shapes.eyeWideLeft < 0.1;
-                    if (lightBrowTension || deathStare || shapes.mouthPressLeft > 0.2) {
+                    // 1. REVERTED FRUSTRATION (Strict Brow Tension only)
+                    // High threshold (0.32) ensures normal looks are ignored.
+                    if (shapes.browDownLeft > 0.32 || shapes.browDownRight > 0.32) {
                         if (!timers.Frustrated) timers.Frustrated = now;
                         if (now - timers.Frustrated > 1500) detected = "Frustrated";
                     } else { timers.Frustrated = 0; }
 
-                    // SADNESS (Eyeball Drop + Persistence)
+                    // 2. SADNESS (Keep Despair Vector + Hand Pose)
                     const browSad = isDev(shapes.browInnerUp, 'browInnerUp', 0.12);
                     const browLow = shapes.browDownLeft > 0.15 || shapes.browDownRight > 0.15;
-                    const eyeballDown = (shapes.eyeLookDownLeft + shapes.eyeLookDownRight) / 2 > 0.35;
+                    const eyeballDown = (shapes.eyeLookDownLeft + shapes.eyeLookDownRight) / 2 > 0.38;
                     const faceHold = Math.abs(landmarks[152].y - landmarks[14].y) < 0.011;
 
                     if (browSad || (browLow && eyeballDown) || (faceHold && (browLow || eyeballDown))) {
@@ -142,13 +135,19 @@
                         if (now - timers.Sad > 2500) detected = "Sad";
                     } else { timers.Sad = 0; }
 
+                    // 3. POSITIVES
                     if (detected === "Neutral") {
                         if (isDev(shapes.mouthSmileLeft, 'mouthSmileLeft', 0.45)) detected = "Delighted";
                         else if (shapes.jawOpen > 0.35 && shapes.eyeWideLeft > 0.15) detected = "Surprised";
                     }
                 }
-                if (detected !== "Neutral") { currentEmotion = detected; lastActiveTime = now; }
-                else if (now - lastActiveTime > 2000) { currentEmotion = "Neutral"; }
+
+                if (detected !== "Neutral") {
+                    currentEmotion = detected;
+                    lastActiveTime = now;
+                } else if (now - lastActiveTime > 2000) {
+                    currentEmotion = "Neutral";
+                }
             }
         }
         updateUI(currentEmotion);
@@ -174,7 +173,7 @@
         ctx.font = "20px sans-serif"; ctx.fillStyle = "#333";
         ctx.fillText(data.advice, 40, 595);
         const link = document.createElement('a');
-        link.download = `AuraCheck_V10.png`; link.href = canvas.toDataURL(); link.click();
+        link.download = `AuraCheck_V10_1.png`; link.href = canvas.toDataURL(); link.click();
     };
 
     setup();
