@@ -3,71 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AuraCheck | Diamond Audit</title>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.js" crossorigin="anonymous"></script>
+    <title>AuraCheck | High-Threshold Audit</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.js" crossorigin="anonymous"></script>
     <style>
         :root {
-            --bg-neutral: #f4f7f6; --bg-thinking: #fdf6e3; --bg-frustrated: #fbe4e4;
-            --bg-sad: #e6f0fa; --bg-surprised: #fff2e6; --bg-delighted: #e6faf4;
+            --bg-neutral: #0f172a; --glow-neutral: rgba(255,255,255,0.05);
+            --bg-happy: #064e3b; --glow-happy: rgba(16, 185, 129, 0.4);
+            --bg-sad: #1e3a8a; --glow-sad: rgba(59, 130, 246, 0.4);
+            --bg-frustrated: #7f1d1d; --glow-frustrated: rgba(239, 68, 68, 0.4);
+            --bg-surprised: #78350f; --glow-surprised: rgba(245, 158, 11, 0.4);
+            --bg-thinking: #334155; --glow-thinking: rgba(148, 163, 184, 0.4);
         }
         body { 
             margin: 0; font-family: -apple-system, system-ui, sans-serif; 
-            transition: background 0.7s cubic-bezier(0.22, 1, 0.36, 1); 
-            overflow: hidden; background: var(--bg-neutral); color: #2c3e50; 
+            transition: background 2s cubic-bezier(0.4, 0, 0.2, 1); 
+            overflow: hidden; background: var(--bg-neutral); color: #f8fafc; 
         }
-        #app { 
-            display: flex; flex-direction: column; align-items: center; padding: 25px; 
-            height: 100vh; justify-content: space-between; box-sizing: border-box;
-            opacity: 0; animation: quickFade 0.8s forwards;
-        }
-        @keyframes quickFade { from { opacity: 0; } to { opacity: 1; } }
-
+        #app { display: flex; flex-direction: column; align-items: center; padding: 25px; height: 100vh; justify-content: space-between; box-sizing: border-box; }
+        
         .view-box { 
             position: relative; width: 280px; height: 280px; border-radius: 85px; 
-            overflow: hidden; border: 12px solid #fff; 
-            box-shadow: 0 25px 50px rgba(0,0,0,0.05); background: #000;
+            overflow: hidden; border: 4px solid rgba(255,255,255,0.1); 
+            background: #000; transition: box-shadow 1.5s ease;
+            box-shadow: 0 0 60px var(--glow-neutral);
         }
         video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
         
         #emotion-label { 
-            position: absolute; top: 20px; width: 120px; left: 80px; padding: 10px; 
-            border-radius: 20px; background: rgba(255,255,255,0.92); 
-            font-weight: 800; font-size: 0.7rem; letter-spacing: 2px; 
-            text-align: center; z-index: 10; backdrop-filter: blur(10px);
+            position: absolute; top: 20px; width: 140px; left: 70px; padding: 10px; 
+            border-radius: 20px; background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.2);
+            font-weight: 800; font-size: 0.8rem; letter-spacing: 3px; color: #fff;
+            text-align: center; z-index: 10; backdrop-filter: blur(15px);
         }
         
         .content-area { max-width: 400px; text-align: center; margin-bottom: 20px; }
-        #advice { 
-            font-size: 1.1rem; font-weight: 600; line-height: 1.4; min-height: 60px; 
-            margin-bottom: 10px; padding: 0 30px; transition: opacity 0.3s;
-        }
-        .status-bar { font-size: 0.6rem; font-weight: 900; letter-spacing: 3px; color: #bdc3c7; text-transform: uppercase; }
+        #advice { font-size: 1.1rem; font-weight: 500; line-height: 1.5; min-height: 80px; color: #cbd5e1; }
+        .status-bar { font-size: 0.6rem; font-weight: 900; letter-spacing: 4px; color: rgba(255,255,255,0.2); text-transform: uppercase; }
         
         #btn-capture { 
-            width: 240px; padding: 20px; border-radius: 50px; border: none; 
-            background: #2c3e50; color: white; font-weight: 700; cursor: pointer;
-            box-shadow: 0 10px 25px rgba(44, 62, 80, 0.2);
+            width: 260px; padding: 20px; border-radius: 50px; border: 1px solid rgba(255,255,255,0.2); 
+            background: rgba(255,255,255,0.05); color: white; font-weight: 700; cursor: pointer;
+            backdrop-filter: blur(10px); transition: 0.3s;
         }
-        .loading-overlay { position: fixed; inset: 0; background: #fff; display: flex; align-items: center; justify-content: center; z-index: 100; }
+        .loading-overlay { position: fixed; inset: 0; background: #0f172a; display: flex; align-items: center; justify-content: center; z-index: 100; color: #fff;}
     </style>
 </head>
 <body>
-    <div id="loading" class="loading-overlay">
-        <p style="font-weight: 800; letter-spacing: 4px; color: #2c3e50;">INITIALIZING</p>
-    </div>
-
+    <div id="loading" class="loading-overlay"><p style="font-weight: 800; letter-spacing: 5px;">CALIBRATING ENGINE</p></div>
     <div id="app">
-        <div class="view-box">
-            <div id="emotion-label">RESTING</div>
+        <div class="view-box" id="glow-target">
+            <div id="emotion-label">SYNCING</div>
             <video id="webcam" autoplay playsinline muted></video>
         </div>
-
         <div class="content-area">
-            <div id="advice">Awaiting biometric alignment...</div>
-            <div class="status-bar">Diamond Precision V11.1</div>
+            <div id="advice">Awaiting biometric resonance...</div>
+            <div class="status-bar">Decision Engine V12.6</div>
         </div>
-
-        <button id="btn-capture">GENERATE AURA REPORT</button>
+        <button id="btn-capture">GENERATE BIOMETRIC REPORT</button>
         <canvas id="output_canvas" style="display:none"></canvas>
     </div>
 
@@ -75,20 +67,22 @@
     import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
 
     const themes = {
-        "Neutral": { color: "#f4f7f6", label: "Balanced", insight: "System equilibrium achieved. Your aura is in a clear, resting state." },
-        "Thinking": { color: "#fdf6e3", label: "Processing", insight: "Cognitive expansion detected. You are synthesizing internal data." },
-        "Frustrated": { color: "#fbe4e4", label: "Tension", insight: "Micro-stress observed. Allow your breath to soften the focus." },
-        "Sad": { color: "#e6f0fa", label: "Reflective", insight: "Aura softening. You are in a state of quiet introspection." },
-        "Surprised": { color: "#fff2e6", label: "Reactive", insight: "System alert. Your aura has expanded in response to new stimuli." },
-        "Delighted": { color: "#e6faf4", label: "Radiant", insight: "High-frequency resonance. Your organic joy is harmonizing the field." }
+        "Neutral": { color: "#0f172a", glow: "0 0 60px rgba(255,255,255,0.05)", label: "NEUTRAL", insight: "System equilibrium. Your aura is in a clear, resting state." },
+        "Thinking": { color: "#334155", glow: "0 0 60px rgba(148, 163, 184, 0.4)", label: "THINKING", insight: "Cognitive synthesis detected. You are processing internal variables." },
+        "Frustrated": { color: "#7f1d1d", glow: "0 0 60px rgba(239, 68, 68, 0.4)", label: "FRUSTRATED", insight: "High-tension pulse observed. Release the focus to reset your field." },
+        "Sad": { color: "#1e3a8a", glow: "0 0 60px rgba(59, 130, 246, 0.4)", label: "SAD", insight: "Introspective frequency. Your aura is in a state of reflection." },
+        "Surprised": { color: "#78350f", glow: "0 0 60px rgba(245, 158, 11, 0.4)", label: "SURPRISED", insight: "System spike. Your sensors have expanded in response to stimuli." },
+        "Happy": { color: "#064e3b", glow: "0 0 60px rgba(16, 185, 129, 0.4)", label: "HAPPY", insight: "Peak synchronization. Your joy is radiating an organic aura." }
     };
 
     let faceLandmarker, video = document.getElementById("webcam");
-    let currentEmotion = "Neutral", frameCount = 0, baseline = {};
-    
-    // SMOOTHING ENGINE
-    let emotionHistory = [];
-    const HISTORY_LIMIT = 5; // The "Golden Number" for speed vs stability
+    let currentAura = "Neutral", frameCount = 0, baseline = {};
+    let frameHistory = [];
+
+    // --- HIGH-THRESHOLD CONFIGURATION ---
+    const FRAME_WINDOW = 30; // 30-frame analysis window
+    const EMOTION_REQ = 18;  // Requires ~60% consensus to enter
+    const REVERT_REQ = 26;   // Requires ~87% consensus to revert to neutral
 
     async function setup() {
         const filesetResolver = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
@@ -102,10 +96,6 @@
         video.addEventListener("loadeddata", predictWebcam);
     }
 
-    function getDominant(arr) {
-        return arr.sort((a,b) => arr.filter(v => v===a).length - arr.filter(v => v===b).length).pop();
-    }
-
     async function predictWebcam() {
         const result = faceLandmarker.detectForVideo(video, performance.now());
         if (result.faceBlendshapes?.length > 0) {
@@ -113,30 +103,51 @@
             result.faceBlendshapes[0].categories.forEach(c => shapes[c.categoryName] = c.score);
             const landmarks = result.faceLandmarks[0];
 
-            if (frameCount < 20) { // Ultra-fast calibration
+            if (frameCount < 20) {
                 for (let key in shapes) baseline[key] = (baseline[key] || 0) + (shapes[key] / 20);
                 frameCount++;
             } else {
-                let instantDetect = "Neutral";
-                const headTilt = Math.abs(landmarks[4].x - (landmarks[234].x + landmarks[454].x) / 2) + 
-                                 Math.abs(landmarks[4].y - (landmarks[10].y + landmarks[152].y) / 2);
+                let detect = "Neutral";
+                
+                // HIGH INTENSITY THRESHOLDS
+                const isSmile = shapes.mouthSmileLeft > 0.60;
+                const isWide = shapes.eyeWideLeft > 0.25 || shapes.jawOpen > 0.45;
+                const isBrowUp = (shapes.browInnerUp - (baseline.browInnerUp || 0)) > 0.22;
+                const isBrowDown = shapes.browDownLeft > 0.45;
 
-                if (headTilt > 0.18) { instantDetect = "Thinking"; }
+                if (isWide && !isBrowDown && !isSmile) detect = "Surprised";
+                else if (isSmile && !isBrowUp) detect = "Happy";
+                else if (isBrowDown && !isWide) detect = "Frustrated";
+                else if (isBrowUp && !isWide && !isSmile) detect = "Sad";
                 else {
-                    if (shapes.mouthSmileLeft > 0.35 || (shapes.eyeSquintLeft > 0.35 && shapes.mouthSmileLeft > 0.15)) instantDetect = "Delighted";
-                    else if (shapes.eyeWideLeft > 0.18 || shapes.jawOpen > 0.3) instantDetect = "Surprised";
-                    else if (shapes.browDownLeft > 0.32 || shapes.browDownRight > 0.32) instantDetect = "Frustrated";
-                    else if ((shapes.browInnerUp - (baseline.browInnerUp || 0)) > 0.12 || shapes.mouthFrownLeft > 0.25) instantDetect = "Sad";
+                    const yaw = Math.abs(landmarks[4].x - (landmarks[234].x + landmarks[454].x) / 2);
+                    if (yaw > 0.22) detect = "Thinking";
                 }
+
+                frameHistory.push(detect);
+                if (frameHistory.length > FRAME_WINDOW) frameHistory.shift();
+
+                const counts = {};
+                frameHistory.forEach(x => counts[x] = (counts[x] || 0) + 1);
                 
-                // Add to history and get the most frequent emotion (Stability Logic)
-                emotionHistory.push(instantDetect);
-                if (emotionHistory.length > HISTORY_LIMIT) emotionHistory.shift();
-                
-                const stabilized = getDominant([...emotionHistory]);
-                if (stabilized !== currentEmotion) {
-                    currentEmotion = stabilized;
-                    updateUI(currentEmotion);
+                let topEmotion = "Neutral";
+                let topCount = 0;
+                for (let e in counts) { if(counts[e] > topCount) { topCount = counts[e]; topEmotion = e; } }
+
+                // INERTIA ENGINE
+                if (currentAura === "Neutral") {
+                    if (topEmotion !== "Neutral" && topCount >= EMOTION_REQ) {
+                        currentAura = topEmotion;
+                        updateUI(currentAura);
+                    }
+                } else {
+                    if (topEmotion === "Neutral" && topCount >= REVERT_REQ) {
+                        currentAura = "Neutral";
+                        updateUI(currentAura);
+                    } else if (topEmotion !== "Neutral" && topEmotion !== currentAura && topCount >= EMOTION_REQ) {
+                        currentAura = topEmotion;
+                        updateUI(currentAura);
+                    }
                 }
             }
         }
@@ -146,7 +157,8 @@
     function updateUI(label) {
         const data = themes[label];
         document.body.style.background = data.color;
-        document.getElementById("emotion-label").innerText = data.label.toUpperCase();
+        document.getElementById("glow-target").style.boxShadow = data.glow;
+        document.getElementById("emotion-label").innerText = data.label;
         document.getElementById("advice").innerText = data.insight;
     }
 
@@ -155,14 +167,14 @@
         const ctx = canvas.getContext("2d");
         canvas.width = 600; canvas.height = 700;
         ctx.save(); ctx.scale(-1, 1); ctx.drawImage(video, -600, 0, 600, 500); ctx.restore();
-        const data = themes[currentEmotion];
+        const data = themes[currentAura];
         ctx.fillStyle = data.color; ctx.fillRect(0, 500, 600, 200);
-        ctx.fillStyle = "#2c3e50"; ctx.font = "bold 34px sans-serif";
-        ctx.fillText(data.label + " Aura State", 45, 565);
-        ctx.font = "22px sans-serif"; ctx.fillStyle = "#7f8c8d";
-        ctx.fillText(data.insight, 45, 615);
+        ctx.fillStyle = "#ffffff"; ctx.font = "bold 32px sans-serif";
+        ctx.fillText(data.label + " STATE", 50, 560);
+        ctx.font = "20px sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.7)";
+        ctx.fillText(data.insight, 50, 610);
         const link = document.createElement('a');
-        link.download = `AuraAudit_V11.png`; link.href = canvas.toDataURL(); link.click();
+        link.download = `AuraAudit_V12.6.png`; link.href = canvas.toDataURL(); link.click();
     };
 
     setup();
